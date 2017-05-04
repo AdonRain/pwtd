@@ -1,0 +1,79 @@
+---
+title: data reshape
+output: html_document
+---
+
+
+```{r}
+load('../data/000015.RData');
+
+head(bd);
+```
+
+
+## 添加时间相关列
+
+
+```{r}
+bd$month <- as.factor(months(bd$date));
+bd$weekday <- as.factor(weekdays(bd$date));
+
+head(bd);
+```
+
+
+## 添加volume变化列
+
+
+```{r}
+last_vol <- c(NA, bd$volume[-length(bd$volume)]);
+
+bd$vol_change <- bd$volume / last_vol;
+```
+
+
+## 添加均价列
+
+
+```{r}
+bd$av <- bd$amount / bd$volume;
+
+head(bd);
+```
+
+
+## av 与 price 相差甚远，不具备参考意义，故而应该关注 av 的变化
+
+
+```{r}
+last_av <- c(NA, bd$av[-length(bd$av)]);
+bd$av_change <- bd$av / last_av;
+
+bd <- bd[, -9];
+
+# 因为第一行含有NA，故而将其删除
+
+bd <- bd[-1, ];
+
+head(bd);
+```
+
+
+## 看一下各个变量的相关性
+
+
+```{r}
+cor.test(~ price + volume, data = bd);
+cor.test(~ change + vol_change, data = bd);
+cor.test(~ change + av_change, data = bd);
+
+# 由于数据量较大，相关系数意义不大，在此之外还应做显著性检验
+```
+
+
+## 检验各变量服从的分布
+
+
+```{r}
+
+```

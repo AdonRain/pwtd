@@ -1,0 +1,28 @@
+---
+title: transform .csv to .RData
+output: html_document
+---
+
+```{r}
+csvs <- dir('../input');
+
+silence <- sapply(csvs, function(csv) {
+  file_name <- paste('../input/', csv, sep = '');
+  data_name <- paste('../data/', gsub('csv', 'RData', csv), sep = '');
+
+  tmp <- read.csv(file_name, fileEncoding = 'gbk');
+
+  bd <- data.frame(date = as.Date(tmp[[1]]),
+    price = tmp[[4]],
+    volume = tmp[[11]],
+    amount = tmp[[12]],
+    change = tmp[[10]]);
+  bd <- bd[order(bd[, 1], decreasing = F), ];
+
+  save(bd, file = data_name);
+});
+
+load('../data/000015.RData');
+
+head(bd);
+```
