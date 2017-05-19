@@ -120,34 +120,70 @@ $(document).ready(function () {
 </div>
 
 
-<pre class="r"><code>csvs &lt;- dir('../input');
+<pre class="r"><code>library('readr');
+csvs &lt;- dir('../input');
 
 silence &lt;- sapply(csvs, function(csv) {
   file_name &lt;- paste('../input/', csv, sep = '');
   data_name &lt;- paste('../data/', gsub('csv', 'RData', csv), sep = '');
 
-  tmp &lt;- read.csv(file_name, fileEncoding = 'gbk');
+  tmp &lt;- read_csv(file_name, locale = locale(encoding='gbk'));
 
   bd &lt;- data.frame(date = as.Date(tmp[[1]]),
     price = tmp[[4]],
     volume = tmp[[11]],
     amount = tmp[[12]],
-    change = tmp[[10]]);
+    change = round((tmp[[10]] / 100), 4));
+
   bd &lt;- bd[order(bd[, 1], decreasing = F), ];
 
   save(bd, file = data_name);
-});
-
-load('../data/000015.RData');
+});</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   日期 = col_date(format = &quot;&quot;),
+##   股票代码 = col_character(),
+##   名称 = col_character(),
+##   收盘价 = col_double(),
+##   最高价 = col_double(),
+##   最低价 = col_double(),
+##   开盘价 = col_double(),
+##   前收盘 = col_double(),
+##   涨跌额 = col_double(),
+##   涨跌幅 = col_double(),
+##   成交量 = col_integer(),
+##   成交金额 = col_double()
+## )</code></pre>
+<pre><code>## Parsed with column specification:
+## cols(
+##   日期 = col_date(format = &quot;&quot;),
+##   股票代码 = col_character(),
+##   名称 = col_character(),
+##   收盘价 = col_double(),
+##   最高价 = col_double(),
+##   最低价 = col_double(),
+##   开盘价 = col_double(),
+##   前收盘 = col_double(),
+##   涨跌额 = col_double(),
+##   涨跌幅 = col_double(),
+##   成交量 = col_double(),
+##   成交金额 = col_double()
+## )</code></pre>
+<pre><code>## Warning: 3 parsing failures.
+##  row    col expected actual                  file
+## 3714 前收盘 a double   None '../input/399300.csv'
+## 3714 涨跌额 a double   None '../input/399300.csv'
+## 3714 涨跌幅 a double   None '../input/399300.csv'</code></pre>
+<pre class="r"><code>load('../data/000015.RData');
 
 head(bd);</code></pre>
 <pre><code>##            date   price  volume    amount  change
-## 2993 2005-01-04 981.182 1133499 630699524 -1.8818
-## 2992 2005-01-05 985.459  904144 512585913  0.4359
-## 2991 2005-01-06 976.057  942208 581597675 -0.9541
-## 2990 2005-01-07 982.918  928986 580349953  0.7029
-## 2989 2005-01-10 988.166  758067 470255277  0.5339
-## 2988 2005-01-11 989.988  736369 460814402  0.1844</code></pre>
+## 2993 2005-01-04 981.182 1133499 630699524 -0.0188
+## 2992 2005-01-05 985.459  904144 512585913  0.0044
+## 2991 2005-01-06 976.057  942208 581597675 -0.0095
+## 2990 2005-01-07 982.918  928986 580349953  0.0070
+## 2989 2005-01-10 988.166  758067 470255277  0.0053
+## 2988 2005-01-11 989.988  736369 460814402  0.0018</code></pre>
 
 
 

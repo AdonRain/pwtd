@@ -15,8 +15,10 @@ head(bd);
 
 
 ```{r}
-bd$month <- as.factor(months(bd$date));
-bd$weekday <- as.factor(weekdays(bd$date));
+psx <- as.POSIXlt(bd$date);
+
+bd$month <- as.factor(psx$mon + 1);
+bd$weekday <- as.factor(psx$wday);
 
 head(bd);
 ```
@@ -28,7 +30,7 @@ head(bd);
 ```{r}
 last_vol <- c(NA, bd$volume[-length(bd$volume)]);
 
-bd$vol_change <- bd$volume / last_vol;
+bd$vol_change <- round(bd$volume / last_vol - 1, 4);
 ```
 
 
@@ -47,7 +49,7 @@ head(bd);
 
 ```{r}
 last_av <- c(NA, bd$av[-length(bd$av)]);
-bd$av_change <- bd$av / last_av;
+bd$av_change <- round(bd$av / last_av - 1, 4);
 
 bd <- bd[, -9];
 
@@ -62,6 +64,8 @@ head(bd);
 ## 看一下各个变量的相关性
 
 
+http://blog.sina.com.cn/s/blog_78c5f0530101btv3.html
+
 ```{r}
 cor.test(~ price + volume, data = bd);
 cor.test(~ change + vol_change, data = bd);
@@ -71,9 +75,197 @@ cor.test(~ change + av_change, data = bd);
 ```
 
 
-## 检验各变量服从的分布
+## 绘制变量关系的散点图
 
 
 ```{r}
+library('ggplot2');
 
+theme_set(theme_minimal());
+
+# price 与 date 的关系
+
+ggplot(bd, aes(x = date, y = price)) +
+  geom_point(stat = 'identity');
+
+# volume 与 date 的关系
+
+ggplot(bd, aes(x = date, y = volume)) +
+  geom_point(stat = 'identity');
+
+# change 与 date 的关系
+
+ggplot(bd, aes(x = date, y = change)) +
+  geom_point(stat = 'identity');
+
+# price 与 volume 之间的关系
+
+ggplot(bd, aes(x = volume, y = price)) +
+  geom_point(stat = 'identity');
+
+# amount 与 volume 之间的关系
+
+ggplot(bd, aes(x = volume, y = amount)) +
+  geom_point(stat = 'identity') +
+  theme_minimal();
+
+# change 与 vol_change 之间的关系
+
+ggplot(bd, aes(x = vol_change, y = change)) +
+  geom_point(stat = 'identity');
+
+# change 与 av_change 之间的关系
+
+ggplot(bd, aes(x = av_change, y = change)) +
+  geom_point(stat = 'identity');
+
+```
+
+
+## 查看change的分布状况
+
+
+```{r}
+# change的期望和标准差
+
+m <- mean(bd$change);
+s <- sd(bd$change);
+
+m;
+s;
+
+# 在构造一条N(m, s)的正态曲线，看两者的相合情况
+
+norm_df <- data.frame(change = rnorm(length(bd$date), mean = m, sd = s));
+
+# 绘图
+
+ggplot(bd, aes(change)) +
+  geom_density() +
+  geom_density(data = norm_df, color = 'red');
+```
+
+
+## 检验change是否符合正态分布
+
+
+```{r}
+# 由于样本数较多，故使用ks检验
+
+ks.test(bd$change, 'pnorm', m, s);
+
+# 密度分布图和ks检验都否定零假设，change 不符合正态分布
+```
+
+
+## 探索一下 price 与均值之差的分布情况
+
+
+```{r}
+# 加载TTR包
+
+if(!require('TTR')){
+  install.packages('TTR');
+  library('TTR');
+}
+
+# 添加 price_ma 列
+d <- 240;
+
+bd$price_ma <- SMA(bd$price, d);
+
+bd <- bd[-c(1:d), ];
+
+head(bd);
+
+# price 与 price_ma 的关系
+
+ggplot(bd, aes(x = price_ma, y = price)) +
+  geom_point(stat = 'identity');
+
+
+# 添加 pma_diff 列
+
+bd$pma_diff <- round(bd$price / bd$price_ma - 1, 4);
+
+head(bd);
+
+# price_diff 与 date 的关系
+
+ggplot(bd, aes(x = date, y = pma_diff)) +
+  geom_point(stat = 'identity');
+
+# price_diff 与 price_ma 的关系
+
+ggplot(bd, aes(x = price_ma, y = pma_diff)) +
+  geom_point(stat = 'identity');
+
+# pma_diff的期望和标准差
+
+pma_mean <- mean(bd$pma_diff);
+pma_sd <- sd(bd$pma_diff);
+
+pma_mean;
+pma_sd;
+
+# 在构造一条N(m, s)的正态曲线，看两者的相合情况
+
+pma_norm <- data.frame(pma_diff = rnorm(length(bd$date), mean = pma_mean, sd = pma_sd));
+
+# 绘图
+
+ggplot(bd, aes(pma_diff)) +
+  geom_density() +
+  geom_density(data = pma_norm, color = 'red');
+
+# 使用ks检验 pma_diff 是否符合正太分布
+
+ks.test(bd$change, 'pnorm', m, s);
+```
+
+
+## 研究 change 与 date 之间的关系
+
+
+```{r}
+if(!require('plyr')) {
+  install.packages('plyr');
+  library('plyr');
+}
+
+month_summary <- ddply(bd, .(month, weekday), summarise, change = round(mean(change), 4));
+
+summary(month_summary);
+
+ggplot(bd, aes(x = month, y = change, colour = weekday)) +
+  geom_point(data = month_summary, aes(group = weekday)) +
+  geom_line(data = month_summary, aes(group = weekday));
+
+```
+
+
+## 时间序列分析
+
+
+```{r}
+offset <- 0;
+
+prc <- ts(bd$price[(length(bd$date)-100-offset) : (length(bd$date)-offset)]);
+
+fprc <- HoltWinters(prc, gamma = F);
+
+plot(fprc)
+
+fprc
+
+# 使用 forcast 包
+
+if(!require('forecast')){
+  install.packages('forecast');
+  library('forecast');
+}
+
+ffprc <- forecast.HoltWinters(fprc, h=10)
+
+plot.forecast(ffprc)
 ```
